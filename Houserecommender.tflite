@@ -1,0 +1,145 @@
+import tensorflow as tf
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense
+from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.preprocessing import StandardScaler
+
+
+# Mount Google Drive to access the dataset
+from google.colab import drive
+drive.mount('/content/drive')
+
+# Load the dataset
+dataset_path = '/content/drive/My Drive/apartments.csv'
+dataset = pd.read_csv(dataset_path)
+
+dataset
+
+# Clean the 'price' column
+dataset['price'] = dataset['price'].replace({',': '', ' ': ''}, regex=True).astype(float)
+
+# Check for null values
+null_values = dataset.isnull().sum()
+print("Null values in each column:")
+print(null_values)
+
+# Separate features and target
+features = dataset[['title', 'bedrooms', 'bathrooms', 'price', 'rate']]
+target = dataset['location']
+
+# One-hot encode categorical data: Name, DISTRICT, SUBLOCATIO, Level, Status
+onehotencoder = OneHotEncoder(sparse=False)
+
+# Fit and transform the features
+features_encoded = onehotencoder.fit_transform(features)
+
+# Encode the target variable
+target_encoder = OneHotEncoder(sparse=False)
+target_encoded = target_encoder.fit_transform(target.reshape(-1, 1))
+
+# List of test sizes to evaluate
+test_sizes = [0.25]
+
+# Loop over different test sizes
+for test_size in test_sizes:
+    # Split into training and testing sets
+    X_train, X_test, y_train, y_test = train_test_split(features_encoded, target_encoded, test_size=test_size, random_state=42)
+
+
+# Splitting the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(features, target, test_size=0.2, random_state=42)
+
+
+# Defining the model
+model = tf.keras.Sequential([
+    tf.keras.layers.Dense(128, activation='relu', input_shape=(X_train.shape[1],)),
+    tf.keras.layers.Dense(64, activation='relu'),
+    tf.keras.layers.Dense(len(location_encoder.classes_), activation='softmax')  # Output layer for classification
+])
+
+
+# Compiling the model
+model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+
+
+# Training the model
+history = model.fit(X_train, y_train, epochs=50, validation_split=0.2)
+
+
+
+# Plotting training history
+plt.figure(figsize=(12, 6))
+plt.subplot(1, 2, 1)
+plt.plot(history.history['loss'], label='Training Loss')
+plt.plot(history.history['val_loss'], label='Validation Loss')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.title('Training and Validation Loss')
+plt.legend()
+plt.grid(True)
+
+plt.subplot(1, 2, 2)
+plt.plot(history.history['accuracy'], label='Training Accuracy')
+plt.plot(history.history['val_accuracy'], label='Validation Accuracy')
+plt.xlabel('Epoch')
+plt.ylabel('Accuracy')
+plt.title('Training and Validation Accuracy')
+plt.legend()
+plt.grid(True)
+plt.show()
+
+
+# Evaluate the model
+loss, accuracy = model.evaluate(X_test, y_test)
+print(f'Accuracy: {accuracy * 100:.2f}%')
+
+
+from sklearn.metrics import confusion_matrix
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+# Compute the confusion matrix
+y_test_labels = np.argmax(y_test, axis=1)
+y_pred_labels = np.argmax(y_pred, axis=1)
+conf_matrix = confusion_matrix(y_test_labels, y_pred_labels)
+
+# Plot the confusion matrix
+plt.figure(figsize=(10, 7))
+sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues', xticklabels=target_encoder.categories_[0], yticklabels=target_encoder.categories_[0])
+plt.xlabel('Predicted')
+plt.ylabel('True')
+plt.title('Confusion Matrix')
+plt.show()
+
+
+def convert_to_tflite(model, save_path):
+    converter = tf.lite.TFLiteConverter.from_keras_model(model)
+    tflite_model = converter.convert()
+    with open(save_path, 'wb') as f:
+        f.write(tflite_model)
+
+convert_to_tflite(model, 'Houserecommender_model.tflite')
+
+print("Preprocessing and model conversion complete.")
+
+
+# Save the model
+model.save('/content/drive/My Drive/location_recommendation_model.h5')
+
+# Convert the model to TensorFlow Lite format
+converter = tf.lite.TFLiteConverter.from_keras_model(model)
+tflite_model = converter.convert()
+
+# Save the TensorFlow Lite model to Google Drive
+with open('/content/drive/My Drive/HouseRecommender.tflite', 'wb') as f:
+    f.write(tflite_model)
+
+print("Model saved to Google Drive.")
+
+
+
